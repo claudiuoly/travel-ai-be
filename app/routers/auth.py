@@ -5,12 +5,17 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+import logging
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin, UserResponse
 from app.utils.password import hash_password, verify_password
 from app.utils.auth import create_access_token
 from app.config import ACCESS_TOKEN_EXPIRE_HOURS
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Crearea router-ului pentru autentificare
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -31,6 +36,8 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         HTTPException: Dacă email/username/telefon există deja
     """
     try:
+        logger.debug(f"Attempting to register user with email: {user_data.email}")
+        
         # Verifică dacă utilizatorul există deja
         existing_user = db.query(User).filter(
             (User.email == user_data.email) |
@@ -40,21 +47,25 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         
         if existing_user:
             if existing_user.email == user_data.email:
+                logger.warning(f"Email already registered: {user_data.email}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email-ul este deja înregistrat"
                 )
             elif existing_user.username == user_data.username:
+                logger.warning(f"Username already taken: {user_data.username}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Username-ul este deja utilizat"
                 )
             elif existing_user.phone == user_data.phone:
+                logger.warning(f"Phone already registered: {user_data.phone}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Numărul de telefon este deja înregistrat"
                 )
         
+        logger.debug("Creating new user...")
         # Creează utilizatorul nou
         hashed_password = hash_password(user_data.password)
         db_user = User(
@@ -67,9 +78,11 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             is_first_login=True
         )
         
+        logger.debug("Adding user to database...")
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        logger.debug(f"User created successfully with ID: {db_user.id}")
         
         # Creează token-ul JWT
         access_token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
@@ -88,16 +101,18 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         }
         
     except IntegrityError as e:
+        logger.error(f"Database integrity error: {str(e)}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Datele introduse nu sunt unice. Verificați email-ul, username-ul și telefonul."
         )
     except Exception as e:
+        logger.error(f"Unexpected error during registration: {str(e)}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Eroare internă la înregistrare"
+            detail=f"Eroare internă la înregistrare: {str(e)}"
         )
 
 @router.post("/login", response_model=dict)

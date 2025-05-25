@@ -18,4 +18,7 @@ ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "24"))
 # Configurare server
 HOST = os.getenv("HOST", "localhost")
 PORT = int(os.getenv("PORT", "8000"))
-DEBUG = os.getenv("DEBUG", "True").lower() == "true" 
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
+# Configurare Gemini AI
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAJ9fgKcsQRhkBYfbok5zcwipGD0xhMT00") 
