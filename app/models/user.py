@@ -3,6 +3,7 @@ Model User pentru baza de date
 """
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
@@ -29,6 +30,9 @@ class User(Base):
     # Timestamps - gestionate automat
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, comment="Data și ora creării")
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False, comment="Data și ora ultimei actualizări")
+
+    # Relație cu mesajele de chat
+    messages = relationship("ChatMessage", back_populates="user")
 
     def __repr__(self):
         """Reprezentare string pentru debugging"""

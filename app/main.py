@@ -9,7 +9,7 @@ import uvicorn
 
 # Import-uri locale
 from app.database import create_tables, engine
-from app.routers import auth
+from app.routers import auth, chat
 from app.config import HOST, PORT, DEBUG
 
 @asynccontextmanager
@@ -57,6 +57,7 @@ app.add_middleware(
 
 # Includerea router-urilor
 app.include_router(auth.router)
+app.include_router(chat.router)
 
 # Handler global pentru excepții
 @app.exception_handler(Exception)
