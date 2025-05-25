@@ -1,10 +1,11 @@
 # Travel AI Backend
 
-Backend complet pentru aplicația Travel AI, dezvoltat cu FastAPI și PostgreSQL.
+Backend complet pentru aplicația Travel AI, dezvoltat cu FastAPI și PostgreSQL, cu integrare Gemini AI pentru chat.
 
 ## 🚀 Caracteristici
 
 - **Autentificare JWT** - Sistem securizat de login/register
+- **Chat AI** - Integrare cu Google Gemini AI pentru asistență turistică
 - **Validări robuste** - Format email, telefon românesc, username alfanumeric
 - **Securitate** - Hash parole cu bcrypt, token-uri cu expirare
 - **Base de date** - PostgreSQL cu SQLAlchemy ORM
@@ -14,6 +15,7 @@ Backend complet pentru aplicația Travel AI, dezvoltat cu FastAPI și PostgreSQL
 
 - Python 3.8+
 - PostgreSQL 12+
+- Google Gemini API Key
 - pip (pentru instalarea dependențelor)
 
 ## 🛠️ Instalare
@@ -54,12 +56,23 @@ DATABASE_URL=postgresql://travel_user:travel_password@localhost/travel_ai_db
 SECRET_KEY=your-super-secret-key-change-in-production
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_HOURS=24
+GEMINI_API_KEY=your-gemini-api-key-here
+HOST=localhost
+PORT=8000
+DEBUG=True
 ```
 
 ## 🏃‍♂️ Rulare
 
 ### Dezvoltare
 ```bash
+# Mod standard cu auto-reload
+python start_server.py
+
+# Mod curat fără warning-uri GUI
+python start_server_clean.py
+
+# Sau direct cu uvicorn
 uvicorn app.main:app --reload --host localhost --port 8000
 ```
 
@@ -137,6 +150,30 @@ Autentifică un utilizator existent.
 }
 ```
 
+### Chat AI
+
+#### POST `/api/chat/message`
+Trimite un mesaj către asistentul AI pentru călătorii.
+
+**Headers:**
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+**Request:**
+```json
+{
+  "message": "Ce atracții turistice îmi recomanzi în București?"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "În București îți recomand să vizitezi Palatul Parlamentului, Centrul Vechi, Parcul Herăstrău, Muzeul Satului și Arcul de Triumf. Pentru o experiență completă, nu rata nici Ateneul Român și Calea Victoriei pentru shopping și cafenele."
+}
+```
+
 ## 🔒 Validări
 
 ### Email
@@ -159,32 +196,65 @@ Autentifică un utilizator existent.
 ### Vârstă
 - Între 13 și 120 ani
 
+### Mesaje Chat
+- Minim 1 caracter, maxim 1000 caractere
+
 ## 🗂️ Structura Proiectului
 
 ```
 travel-ai-be/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # Aplicația principală
+│   ├── main.py              # Aplicația principală FastAPI
 │   ├── database.py          # Configurare PostgreSQL
 │   ├── config.py            # Configurare environment
 │   ├── models/
 │   │   ├── __init__.py
-│   │   └── user.py          # Model SQLAlchemy User
+│   │   ├── user.py          # Model SQLAlchemy User
+│   │   └── chat.py          # Model SQLAlchemy ChatMessage
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   └── user.py          # Scheme Pydantic
+│   │   ├── user.py          # Scheme Pydantic User
+│   │   └── chat.py          # Scheme Pydantic Chat
 │   ├── routers/
 │   │   ├── __init__.py
-│   │   └── auth.py          # Rute autentificare
+│   │   ├── auth.py          # Rute autentificare
+│   │   └── chat.py          # Rute chat AI
 │   └── utils/
 │       ├── __init__.py
 │       ├── auth.py          # Utilitare JWT
-│       └── password.py      # Utilitare parole
+│       ├── password.py      # Utilitare parole
+│       └── chat.py          # Integrare Gemini AI
 ├── requirements.txt         # Dependențe Python
+├── start_server.py          # Script pornire server (cu debug)
+├── start_server_clean.py    # Script pornire server (fără warning-uri)
 ├── .env                     # Variabile de mediu
+├── .gitignore              # Fișiere ignorate de Git
 └── README.md               # Documentație
 ```
+
+## 🤖 Integrare Gemini AI
+
+Aplicația folosește Google Gemini AI pentru a oferi răspunsuri inteligente la întrebările despre călătorii. Caracteristici:
+
+- **Context specializat** - Asistentul este optimizat pentru sfaturi de călătorie
+- **Răspunsuri concise** - Limitate la 200 cuvinte pentru claritate
+- **Istoric conversații** - Toate mesajele sunt salvate în baza de date
+- **Rate limiting** - Gestionarea automată a limitelor API
+
+### Configurare Gemini API
+
+1. Obține o cheie API de la [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Adaugă cheia în fișierul `.env`:
+   ```env
+   GEMINI_API_KEY=your-api-key-here
+   ```
+
+### Limite API Gemini (Free Tier)
+
+- **15 cereri pe minut** pentru modelul `gemini-1.5-flash`
+- Aplicația gestionează automat erorile de rate limiting
+- Pentru utilizare intensivă, consideră upgrade la plan plătit
 
 ## 🧪 Testare
 
@@ -220,6 +290,16 @@ curl -X POST "http://localhost:8000/api/auth/login" \
   }'
 ```
 
+**Chat (necesită token din login):**
+```bash
+curl -X POST "http://localhost:8000/api/chat/message" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "message": "Ce îmi recomanzi să vizitez în Cluj-Napoca?"
+  }'
+```
+
 ## 🔧 Troubleshooting
 
 ### Eroare conexiune bază de date
@@ -231,9 +311,40 @@ curl -X POST "http://localhost:8000/api/auth/login" \
 - Asigură-te că environment-ul virtual este activat
 - Rulează `pip install -r requirements.txt`
 
+### Eroare Gemini API
+- Verifică că `GEMINI_API_KEY` este setat corect în `.env`
+- Verifică că nu ai depășit limita de 15 cereri pe minut
+- Pentru erori persistente, verifică [documentația oficială](https://ai.google.dev/gemini-api/docs/rate-limits)
+
 ### Port deja ocupat
 - Schimbă portul în `.env`: `PORT=8001`
 - Sau oprește procesul care folosește portul 8000
+
+### Warning-uri GUI (Chromium/Electron)
+- Folosește `python start_server_clean.py` pentru a evita warning-urile
+- Sau setează manual variabilele de mediu:
+  ```bash
+  export EDITOR=true
+  unset DISPLAY WAYLAND_DISPLAY
+  ```
+
+## 📊 Dependențe
+
+### Core
+- **FastAPI** - Framework web modern și rapid
+- **SQLAlchemy** - ORM pentru PostgreSQL
+- **Pydantic** - Validare și serializare date
+- **Uvicorn** - Server ASGI
+
+### Securitate
+- **python-jose** - JWT token handling
+- **passlib** - Hash parole cu bcrypt
+
+### AI Integration
+- **google-generativeai** - Client oficial Gemini AI
+
+### Database
+- **psycopg2-binary** - Driver PostgreSQL
 
 ## 🤝 Contribuție
 
