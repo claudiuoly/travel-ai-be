@@ -49,7 +49,7 @@ app = FastAPI(
 # Configurare CORS pentru frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Adaugă domeniul frontend-ului
+    allow_origins=["*"],  # Permite toate originile pentru dezvoltare
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
